@@ -68,7 +68,7 @@ def log_sum_exp_batch(vecs):
 
 
 def pad_tensors(tensor_list):
-    ml = max([x.shape[0] for x in tensor_list])
+    ml = max(x.shape[0] for x in tensor_list)
     shape = [len(tensor_list), ml] + list(tensor_list[0].shape[1:])
     template = torch.zeros(*shape, dtype=torch.long, device=flair.device)
     lens_ = [x.shape[0] for x in tensor_list]
@@ -122,8 +122,7 @@ class DomainClassifier(nn.Module):
     def forward(self, x):
         #x = GradReverse.apply(x, self.lambd)
         x = grad_reverse(x, self.lambd)
-        scores = self.net(x)
-        return scores
+        return self.net(x)
     
     
     
@@ -137,8 +136,7 @@ def one_hot_encoded(number, size):
     return vec
 
 def to_binary(arr):
-    vec = [1 if v else 0 for v in arr]
-    return vec
+    return [1 if v else 0 for v in arr]
 
 
 class FeatureEmbedding(torch.nn.Module):
@@ -280,31 +278,28 @@ class EmbeddingAttention(torch.nn.Module):
         f : batch_size * seq_len * emb_num * feature_size
         """
         seq_len, batch_size, emb_num, input_size = x.size()
-        
+
         if self.fixed_weights is not None:
             weights = torch.tensor(self.fixed_weights).to(flair.device)
             weights = weights.repeat(seq_len * batch_size)
-            weights = weights.view(seq_len * batch_size, emb_num)
-            
         else:
             x_proj = self.ulinear(x.contiguous().view(-1, self.input_size))
             x_proj = x_proj.view(seq_len, batch_size, emb_num, self.attn_size)
-        
+
             if self.feature_size > 0:
                 f_proj = self.wlinear(f.contiguous().view(-1, self.feature_size))
                 f_proj = f_proj.view(seq_len, batch_size, emb_num, self.attn_size)
                 projs = [x_proj, f_proj]
             else:
                 projs = [x_proj]
-                
+
             scores = self.tlinear(torch.tanh(sum(projs)).view(-1, self.attn_size)).view(seq_len, batch_size, emb_num)
             weights = F.softmax(scores, dim=2)
-            # weighted average input vectors
-            weights = weights.view(seq_len * batch_size, emb_num)
-            
+        weights = weights.view(seq_len * batch_size, emb_num)
+
         x = x.view(seq_len * batch_size, emb_num, input_size)
         return_weights = weights
-        
+
         if self.use_att_sum:
             outputs = weights.unsqueeze(1).bmm(x).squeeze(1)
             outputs = outputs.view(seq_len, batch_size, input_size)
@@ -314,7 +309,7 @@ class EmbeddingAttention(torch.nn.Module):
             weights = weights.contiguous().view(batch_size * seq_len, emb_num, input_size)
             outputs = weights * x
             outputs = outputs.view(seq_len, batch_size, emb_num * input_size)
-        
+
         return outputs, return_weights
     
     

@@ -34,7 +34,7 @@ class WeightExtractor(object):
         if type(directory) is str:
             directory = Path(directory)
         self.weights_file = init_output_file(directory, "weights.txt")
-        self.weights_dict = defaultdict(lambda: defaultdict(lambda: list()))
+        self.weights_dict = defaultdict(lambda: defaultdict(lambda: []))
         self.number_of_weights = number_of_weights
 
     def extract_weights(self, state_dict, iteration):
@@ -59,7 +59,7 @@ class WeightExtractor(object):
                 value = vec.item()
 
                 with open(self.weights_file, "a") as f:
-                    f.write("{}\t{}\t{}\t{}\n".format(iteration, key, i, float(value)))
+                    f.write(f"{iteration}\t{key}\t{i}\t{float(value)}\n")
 
     def _init_weights_index(self, key, state_dict, weights_to_watch):
         indices = {}
@@ -69,7 +69,7 @@ class WeightExtractor(object):
             vec = state_dict[key]
             cur_indices = []
 
-            for x in range(len(vec.size())):
+            for _ in range(len(vec.size())):
                 index = random.randint(0, len(vec) - 1)
                 vec = vec[index]
                 cur_indices.append(index)

@@ -62,21 +62,21 @@ def _frequencies_for_word2vec(filename):
 def _frequency_binning(counter, num_groups):
     groups = {0: []}
     step_size = sum(counter.values()) / num_groups
-    
+
     cur_bin = 0
     cur_size = 0.0
     next_size = step_size
-    
+
     common = counter.most_common()
     for w, f in common:
         cur_size += f
         groups[cur_bin].append(w)
-        
+
         if cur_size + f >= next_size and cur_bin < num_groups - 1:
             next_size += step_size
             cur_bin += 1
             groups[cur_bin] = []
-            
+
     groups = {g: vals for g, vals in groups.items() if len(vals) > 0}
     word2freq = defaultdict(lambda : num_groups - 1)
     for g, vals in groups.items():
@@ -98,10 +98,10 @@ def _add_features(sentences: List[Sentence], features, freq_bins, idx2shape, sha
       * 'b' for basic one-hot encoded features
         - includes punctuation, lowercased, etc.
     """
-    for e_sid, sent in enumerate(sentences):
-        for e_tid, token in enumerate(sent):
+    for sent in sentences:
+        for token in sent:
             t = token.text
-            
+
             if 'w' in features:
                 if t in word2idx:
                     t_id = word2idx[t]
@@ -111,7 +111,7 @@ def _add_features(sentences: List[Sentence], features, freq_bins, idx2shape, sha
                     word2idx[t] = t_id
                 token.add_tag('feat//word', t, 1.0)
                 token.add_tag('feat//word-id', t_id, 1.0)
-            
+
             if 's' in features:
                 s = _get_shape(t)
                 if s in shape2idx:
@@ -122,44 +122,41 @@ def _add_features(sentences: List[Sentence], features, freq_bins, idx2shape, sha
                     shape2idx[s] = s_id
                 token.add_tag('feat//shape', s, 1.0)
                 token.add_tag('feat//shape-id', s_id, 1.0)
-            
+
             if 'f' in features:
                 f = freq_bins[t] + 1
                 token.add_tag('feat//freq', f, 1.0)
-            
+
             if 'l' in features:
                 l = max(min(len(t), NUM_LENGTH_GROUPS-1), 1)
                 token.add_tag('feat//len', l, 1.0)
-            
+
             if 'b' in features:
                 c = t.isupper()
-                c0 = t[0].isupper() 
-                c1 = any([ti.isupper() for ti in t])
+                c0 = t[0].isupper()
+                c1 = any(ti.isupper() for ti in t)
                 n = t.isnumeric()
-                n0 = t[0].isnumeric() 
-                n1 = any([ti.isnumeric() for ti in t])
+                n0 = t[0].isnumeric()
+                n1 = any(ti.isnumeric() for ti in t)
                 a = t.isalnum()
-                a0 = t[0].isalnum() 
-                a1 = any([ti.isalnum() for ti in t])
+                a0 = t[0].isalnum()
+                a1 = any(ti.isalnum() for ti in t)
                 p = t in punctuation
                 p0 = t[0] in punctuation
-                p1 = any([ti in punctuation for ti in t])
+                p1 = any(ti in punctuation for ti in t)
                 token.add_tag('feat//basic', (c, c0, c1, n, n0, n1, a, a0, a1, p, p0, p1), 1.0)
-            #token.add_tag('feat/vec/basic', to_binary([c, c0, c1, n, n0, n1, a, a0, a1, p, p0, p1]), 1.0)
-            
-    feature_dims = {
-        'f': NUM_FREQ_GROUPS if 'f' in features else 0, 
+    return {
+        'f': NUM_FREQ_GROUPS if 'f' in features else 0,
         'l': NUM_LENGTH_GROUPS if 'l' in features else 0,
         'w': len(word2idx) if 'w' in features else 0,
         's': len(shape2idx) if 's' in features else 0,
         'b': 12 if 'b' in features else 0,
     }
-    return feature_dims
 
 
 def add_features(corpus, use_frequencies_from_file='path/to/word2vec/file', use_length=True, 
                  use_words=True, use_shapes=True, use_basic=True):
-    
+
     feature_flags = ''
     if use_frequencies_from_file and use_frequencies_from_file != 'path/to/word2vec/file':
         print(f'Retrieve frequencies from {use_frequencies_from_file}')
@@ -168,7 +165,7 @@ def add_features(corpus, use_frequencies_from_file='path/to/word2vec/file', use_
         feature_flags += 'f'
     else:
         freq_bins = defaultdict(lambda : 1)
-        
+
     if use_length:
         feature_flags += 'l'
     if use_words:
@@ -177,9 +174,9 @@ def add_features(corpus, use_frequencies_from_file='path/to/word2vec/file', use_
         feature_flags += 's'
     if use_basic:
         feature_flags += 'b'
-    print('Use features: ' + feature_flags)
+    print(f'Use features: {feature_flags}')
 
-    idx2shape, shape2idx, idx2word, word2idx = dict(), dict(), dict(), dict()
+    idx2shape, shape2idx, idx2word, word2idx = {}, {}, {}, {}
     feature_dims = _add_features(corpus._train, feature_flags, freq_bins, idx2shape, shape2idx, idx2word, word2idx)
     feature_dims = _add_features(corpus._dev, feature_flags, freq_bins, idx2shape, shape2idx, idx2word, word2idx)
     feature_dims = _add_features(corpus._test, feature_flags, freq_bins, idx2shape, shape2idx, idx2word, word2idx)

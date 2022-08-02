@@ -93,14 +93,14 @@ class AveragingBytePairEmbeddings(TokenEmbeddings):
 
     def _add_embeddings_internal(self, sentences: List[Sentence]) -> List[Sentence]:
 
-        for i, sentence in enumerate(sentences):
-
+        for sentence in sentences:
             for token, token_idx in zip(sentence.tokens, range(len(sentence.tokens))):
 
-                if "field" not in self.__dict__ or self.field is None:
-                    word = token.text
-                else:
-                    word = token.get_tag(self.field).value
+                word = (
+                    token.text
+                    if "field" not in self.__dict__ or self.field is None
+                    else token.get_tag(self.field).value
+                )
 
                 if word.strip() == "":
                     # empty words get no embedding
@@ -128,7 +128,7 @@ class AveragingBytePairEmbeddings(TokenEmbeddings):
         return self.name
 
     def extra_repr(self):
-        return "model={}".format(self.name)
+        return f"model={self.name}"
 
         
 class MetaEmbeddings(TokenEmbeddings):
@@ -172,12 +172,12 @@ class MetaEmbeddings(TokenEmbeddings):
             self.__embedding_length = max_mapping_dim
             if not use_average:
                 self.map_all_embeddings = True # If concatenated embeddings are mapped to a smaller size
-                
+
         elif self.use_average: 
-            self.__embedding_length = max([emb.embedding_length for emb in self.embeddings])
+            self.__embedding_length = max(emb.embedding_length for emb in self.embeddings)
         else:
-            self.__embedding_length = sum([emb.embedding_length for emb in self.embeddings])
-            
+            self.__embedding_length = sum(emb.embedding_length for emb in self.embeddings)
+
         # Add Meta-Embedding models
         if self.use_average:
             self.embedding_mappings = []
@@ -189,39 +189,39 @@ class MetaEmbeddings(TokenEmbeddings):
                 self.embedding_mappings.append(l)
             self.embedding_mappings = torch.nn.ModuleList(self.embedding_mappings)
         elif self.map_all_embeddings:
-            inp_dim = sum([emb.embedding_length for emb in self.embeddings])
+            inp_dim = sum(emb.embedding_length for emb in self.embeddings)
             self.final_embedding_mapping = torch.nn.Linear(inp_dim, self.embedding_length, 
                                                            bias=use_mapping_bias).to(flair.device)
-            
+
         self.use_batch_norm = use_batch_norm
         if use_batch_norm:
             self.batch_norm = torch.nn.BatchNorm1d(self.embedding_length)
-            
-            
+
+
         self.use_mapping_norm = use_mapping_norm
         if use_mapping_norm: 
             self.embedding_norms = []
-            for i in range(len(self.embeddings)):
+            for embedding_ in self.embeddings:
                 out_dim = self.embedding_length
                 l = torch.nn.LayerNorm(out_dim)
                 l.to(flair.device)
                 self.embedding_norms.append(l)
             self.embedding_norms = torch.nn.ModuleList(self.embedding_norms)
-            
+
         if self.use_features:
             self.feature_model = feature_model
             self.attention = EmbeddingAttention(self.embedding_length, feature_model.embedding_length, att_hidden_size, 
                                                 self.use_average, use_fixed_weights_for_att)
-            
+
         elif self.use_attention:
             self.attention = EmbeddingAttention(self.embedding_length, 0, att_hidden_size, 
                                                 self.use_average, use_fixed_weights_for_att)
-            
-            
+
+
         self.to(flair.device)
-            
+
         log_line(log)
-        log.info(f'Meta-Embedding Configuration')
+        log.info('Meta-Embedding Configuration')
         log_line(log)
         log.info("Embeddings:")
         for emb in self.embeddings:

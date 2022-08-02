@@ -75,11 +75,11 @@ plt.style.use('seaborn-paper')
 
 def plot_sample(E, data, method='pca', RS=548, save_as=None):
     Y, X, words = [], [], []
-    
+
     for s, sentence in enumerate(data):
         E.embed(sentence)
         embeddings = E(sentence, return_mapped_embeddings=True)
-        
+
         for emb_id, emb in enumerate(embeddings):
             for tid, token in enumerate(sentence):
                 x = emb[0][tid]
@@ -87,29 +87,29 @@ def plot_sample(E, data, method='pca', RS=548, save_as=None):
                 Y.append(emb_id)
                 words.append(token.text)
     X, Y = np.array(X), np.array(Y)
-    
+
     # Apply pca and t-sne to X
     if method.lower() == 'pca':
         pca = PCA(n_components=2, random_state=RS).fit(X)  
         X_pca = pca.transform(X)
         x = X_pca
-        
+
     elif method.lower().replace('-', '') == 'tsne':
         pca = PCA(n_components=50, random_state=RS).fit(X) 
         X_pca = pca.transform(X)
         X_tsne = TSNE(random_state=RS).fit_transform(X_pca)
         x = X_tsne
-    
+
     np.savetxt(f'{save_as}_data_y.np', Y)
     np.savetxt(f'{save_as}_data_x.np', x)
-        
+
     label_X = 'PC 1' if method.lower() == 'pca' else 't-SNE 1'
     label_Y = 'PC 2' if method.lower() == 'pca' else 't-SNE 2'
-    
+
     # Create Plot
     colors = Y
     axis_off = False
-    
+
     palette = np.array(sns.color_palette("hls", E.num_embeddings))
     num_classes = len(np.unique(colors))
 
@@ -117,16 +117,16 @@ def plot_sample(E, data, method='pca', RS=548, save_as=None):
     f = plt.figure(figsize=(8, 8))
     ax = plt.subplot(aspect='equal')
     sc = ax.scatter(x[:,0], x[:,1], lw=0, s=40, c=palette[colors.astype(np.int)])
-    
+
     #if title is not None:
     #    plt.title(title)
     plt.xlabel(label_X)
     plt.ylabel(label_Y)
-    
+
     if axis_off:
         ax.axis('off')
     ax.axis('tight')
-    
+
     if save_as is not None:
         plt.savefig(f'{save_as}.pdf', bbox_inches='tight')
         plt.savefig(f'{save_as}.png', bbox_inches='tight')
@@ -137,8 +137,7 @@ def plot_sample(E, data, method='pca', RS=548, save_as=None):
 def get_mask(org, maxlen):
     mask = []
     for val in org:
-        for i in range(maxlen):
-            mask.append(1 if i < val else 0)
+        mask.extend(1 if i < val else 0 for i in range(maxlen))
     mask = torch.tensor(mask)
     return mask.to(flair.device)
 
@@ -166,7 +165,7 @@ class AdversarialModelTrainer:
         self.optimizer: torch.optim.Optimizer = optimizer
         self.epoch: int = epoch
         self.use_tensorboard: bool = use_tensorboard
-            
+
         self.D = D                     #
         if D is not None:              # Our objects
             try:
